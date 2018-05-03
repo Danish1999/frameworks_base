@@ -48,7 +48,6 @@ import com.android.systemui.statusbar.SignalClusterView;
 import com.android.systemui.statusbar.phone.StatusBarIconController.DarkIconManager;
 import com.android.systemui.statusbar.phone.TickerView;
 import com.android.systemui.statusbar.policy.DarkIconDispatcher;
-import com.android.systemui.statusbar.policy.Clock;
 import com.android.systemui.statusbar.policy.EncryptionHelper;
 import com.android.systemui.statusbar.policy.KeyguardMonitor;
 import com.android.systemui.statusbar.policy.NetworkController;
@@ -81,9 +80,6 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
     private View mTickerViewFromStub;
     private final Handler mHandler = new Handler();
 
-    private View mClock;
-    private View mLeftClock;
-
     private class CustomSettingsObserver extends ContentObserver {
         CustomSettingsObserver(Handler handler) {
             super(handler);
@@ -96,34 +92,11 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
             getContext().getContentResolver().registerContentObserver(
                     Settings.System.getUriFor(Settings.System.STATUS_BAR_SHOW_TICKER),
                     false, this, UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System
-                    .getUriFor(Settings.System.STATUS_BAR_CLOCK), false,
-                    this, UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System
-                    .getUriFor(Settings.System.STATUSBAR_CLOCK_STYLE), false,
-                    this, UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System
-                    .getUriFor(Settings.System.STATUS_BAR_CLOCK_SECONDS), false,
-                    this, UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System
-                    .getUriFor(Settings.System.STATUSBAR_CLOCK_AM_PM_STYLE), false,
-                    this, UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System
-                    .getUriFor(Settings.System.STATUSBAR_CLOCK_DATE_DISPLAY), false,
-                    this, UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System
-                    .getUriFor(Settings.System.STATUSBAR_CLOCK_DATE_STYLE), false,
-                    this, UserHandle.USER_ALL);
-            resolver.registerContentObserver(Settings.System
-                    .getUriFor(Settings.System.STATUSBAR_CLOCK_DATE_FORMAT), false,
-                    this, UserHandle.USER_ALL);
         }
 
         @Override
         public void onChange(boolean selfChange, Uri uri) {
             updateSettings(true);
-                ((Clock)mClock).updateSettings();
-                ((Clock)mLeftClock).updateSettings();
         }
     }
 
@@ -143,6 +116,7 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
         mKeyguardMonitor = Dependency.get(KeyguardMonitor.class);
         mNetworkController = Dependency.get(NetworkController.class);
         mStatusBarComponent = SysUiServiceProvider.getComponent(getContext(), StatusBar.class);
+        mCustomSettingsObserver = new CustomSettingsObserver(mHandler); 
     }
 
     @Override
@@ -162,21 +136,16 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
         Dependency.get(StatusBarIconController.class).addIconGroup(mDarkIconManager);
         mSystemIconArea = mStatusBar.findViewById(R.id.system_icon_area);
         mSignalClusterView = mStatusBar.findViewById(R.id.signal_cluster);
-        mClock = mStatusBar.findViewById(R.id.clock);
-        mLeftClock = mStatusBar.findViewById(R.id.left_clock);
         Dependency.get(DarkIconDispatcher.class).addDarkReceiver(mSignalClusterView);
         mCardinalLogo = mStatusBar.findViewById(R.id.status_bar_logo);
         Dependency.get(DarkIconDispatcher.class).addDarkReceiver(mCardinalLogo);
         mCustomSettingsObserver.observe();
         updateSettings(false);
         // initTickerView() already called above from updateSettings(false)
-        ((Clock)mClock).updateSettings();
-        ((Clock)mLeftClock).updateSettings();
         // Default to showing until we know otherwise.
         showSystemIconArea(false);
         initEmergencyCryptkeeperText();
 
-     mCustomSettingsObserver = new CustomSettingsObserver(mHandler);
     }
 
     @Override
@@ -284,10 +253,6 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
         animateHide(mNotificationIconAreaInner, animate, true);
         if (mShowLogo) {
             animateHide(mCardinalLogo, animate, true);
-
-        if (((Clock)mLeftClock).isEnabled()) {
-            animateHide(mLeftClock, animate, true);
-           }
         }
     }
 
@@ -295,9 +260,6 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
         animateShow(mNotificationIconAreaInner, animate);
         if (mShowLogo) {
             animateShow(mCardinalLogo, animate);
-        }
-        if (((Clock)mLeftClock).isEnabled()) {
-            animateShow(mLeftClock, animate);
         }
     }
 
